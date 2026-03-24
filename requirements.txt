@@ -1,0 +1,35 @@
+# Core dependencies
+requests>=2.31.0
+python-dotenv>=1.0.0
+imapclient>=3.0.0
+
+# Telegram bot
+pyrogram>=2.0.106
+tgcrypto>=1.2.5
+
+# Configuration & validation
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Scheduling
+APScheduler>=3.10.4
+
+# Structured logging
+structlog>=23.2.0
+
+# Database
+aiosqlite>=0.19.0
+
+# File locking for concurrent execution prevention
+filelock>=3.13.0
+
+# Notion integration (future use)
+notion-client>=2.2.0
+
+# Email parsing
+mail-parser>=4.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.12.0

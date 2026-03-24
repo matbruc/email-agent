@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  email-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./emails:/app/emails
+      - ./logs:/app/logs
+    restart: unless-stopped
+    depends_on:
+      - ngrok
+    networks:
+      - email-agent-network
+    environment:
+      - TELEGRAM_WEBHOOK_URL=http://email-agent:8080/webhook
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    command:
+      - http
+      - --region=us
+      - email-agent:8080
+    env_file:
+      - .env
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    networks:
+      - email-agent-network
+    restart: unless-stopped
+
+networks:
+  email-agent-network:
+    driver: bridge
