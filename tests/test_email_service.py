@@ -2,7 +2,9 @@
 Tests for email service.
 """
 import pytest
+import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
+from datetime import datetime
 from core.email_service import EmailService, Email, EmailFetchError, EmailParseError
 
 
@@ -82,15 +84,28 @@ class TestEmailService:
     @pytest.mark.asyncio
     async def test_connect(self, email_service):
         """Test IMAP connection."""
-        await email_service.connect()
-        assert email_service._client is not None
+        # Mock IMAPClient class to avoid actual Gmail connection
+        with patch('core.email_service.IMAPClient') as MockIMAPClient:
+            mock_instance = MagicMock()
+            mock_instance.login = MagicMock(return_value=None)
+            MockIMAPClient.return_value = mock_instance
+
+            await email_service.connect()
+            assert email_service._client is not None
 
     @pytest.mark.asyncio
     async def test_disconnect(self, email_service):
         """Test IMAP disconnection."""
-        await email_service.connect()
-        await email_service.disconnect()
-        assert email_service._client is None
+        with patch('core.email_service.IMAPClient') as MockIMAPClient:
+            mock_instance = MagicMock()
+            mock_instance.login = MagicMock(return_value=None)
+            mock_instance.close = MagicMock()
+            mock_instance.logout = MagicMock()
+            MockIMAPClient.return_value = mock_instance
+
+            await email_service.connect()
+            await email_service.disconnect()
+            assert email_service._client is None
 
     def test_select_folder(self, email_service):
         """Test folder selection."""

@@ -6,13 +6,27 @@ import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
+# Ensure event loop exists before any imports that may trigger pyrogram
+# This is needed for Python 3.14+ compatibility
+asyncio.set_event_loop(asyncio.new_event_loop())
+
 from config.settings import Settings
 from core.email_service import Email, EmailService
 from core.llm_service import LLMService, ClassificationResult
-from core.telegram_service import TelegramService
 from core.storage import Storage
 from processors.email_classifier import EmailClassifier
 from processors.summarizer import Summarizer
+
+# Lazy import TelegramService to avoid pyrogram import issues
+@pytest.fixture
+def telegram_service(settings: Settings):
+    """Create Telegram service with mocked client."""
+    from core.telegram_service import TelegramService
+
+    service = TelegramService(settings)
+    service._client = AsyncMock()
+    service.send_message = AsyncMock()
+    return service
 
 
 @pytest.fixture
@@ -79,7 +93,10 @@ def marketing_email() -> Email:
 def email_service(settings: Settings) -> EmailService:
     """Create email service with mocked IMAP client."""
     service = EmailService(settings)
-    service._client = MagicMock()
+    mock_client = MagicMock()
+    mock_client.login = MagicMock(return_value=None)
+    mock_client.logout = MagicMock(return_value=None)
+    service._client = mock_client
     return service
 
 
@@ -93,14 +110,6 @@ def llm_service(settings: Settings) -> LLMService:
 def storage(settings: Settings) -> Storage:
     """Create storage with test database."""
     return Storage(settings.DATABASE_PATH)
-
-
-@pytest.fixture
-def telegram_service(settings: Settings) -> TelegramService:
-    """Create Telegram service with mocked client."""
-    service = TelegramService(settings)
-    service._client = AsyncMock()
-    return service
 
 
 @pytest.fixture
@@ -120,10 +129,3 @@ def summarizer(
     return Summarizer(settings, email_service, llm_service, storage)
 
 
-# Async fixtures
-@pytest.fixture
-def event_loop():
-    """Create event loop for async tests."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()

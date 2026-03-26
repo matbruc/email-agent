@@ -57,6 +57,8 @@ class TelegramNotification:
 *b Subject:* {self.subject}
 
 {self.summary}
+
+Classification: {self.classification}
 """
 
 

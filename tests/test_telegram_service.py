@@ -1,6 +1,7 @@
 """
 Tests for Telegram service.
 """
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from core.telegram_service import TelegramService, TelegramNotification

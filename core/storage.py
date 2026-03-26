@@ -29,6 +29,7 @@ class ProcessedEmail:
     processed_at: datetime
     body_preview: Optional[str] = None
     summary: Optional[str] = None
+    is_read: bool = False
 
 
 class Storage:
