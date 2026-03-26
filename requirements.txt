@@ -4,6 +4,8 @@ python-dotenv>=1.0.0
 imapclient>=3.0.0
 
 # Telegram bot
+# Note: tgcrypto provides speedups but requires native compilation
+# For Docker, we can use --only-binary or install system deps
 pyrogram>=2.0.106
 tgcrypto>=1.2.5
 

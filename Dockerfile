@@ -12,19 +12,21 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (required for tgcrypto and other packages)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    libc-dev \
+    libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies (use --only-binary for tgcrypto if available)
+RUN pip install --no-cache-dir -r requirements.txt || pip install --no-cache-dir --only-binary=:all: -r requirements.txt
 
 # Copy project files
-COPY . .
+COPY --chown=root:root . .
 
 # Create data directories
 RUN mkdir -p data emails logs

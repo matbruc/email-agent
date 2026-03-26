@@ -4,15 +4,18 @@ Supports both polling mode and webhook mode (ngrok).
 """
 import asyncio
 import logging
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Any, Callable, TYPE_CHECKING
 from dataclasses import dataclass
 from enum import Enum
 
 import pyrogram
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.enums import ParseMode
+import tgcrypto
 
 from config.settings import Settings
+
 
 
 logger = logging.getLogger(__name__)
@@ -73,16 +76,18 @@ class TelegramService:
         "/help": "Show help message"
     }
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, job_manager: Optional['JobManager'] = None):
         """
         Initialize Telegram service.
 
         Args:
             settings: Application settings with Telegram configuration
+            job_manager: Optional JobManager reference for triggering email processing
         """
         self.settings = settings
         self.bot_token = settings.TELEGRAM_BOT_TOKEN
         self.chat_id = settings.TELEGRAM_CHAT_ID
+        self.job_manager = job_manager
 
         # Bot client
         self._client: Optional[Client] = None
@@ -118,20 +123,42 @@ class TelegramService:
     async def initialize(self) -> None:
         """Initialize Telegram client."""
         if self._client is None:
+            # Pyrogram requires API ID and hash even for bot authentication
             self._client = Client(
                 "email_agent",
-                bot_token=self.bot_token
+                bot_token=self.bot_token,
+                api_id=self.settings.TELEGRAM_API_ID,
+                api_hash=self.settings.TELEGRAM_API_HASH
             )
 
     async def start_polling(self) -> None:
         """Start bot in polling mode."""
         await self.initialize()
 
+        # Register message handler for commands (Pyrogram v2 syntax)
+        async def command_handler(client, message: Message):
+            # Check if message starts with any registered command
+            if not message.text:
+                return
+            parts = message.text.split()
+            command = parts[0].lower()
+            if command in self._handlers:
+                logger.info(f"Telegram command received: {message.text} from chat {message.chat.id}, type={message.chat.type if message.chat else 'None'}")
+                await self._handle_command(message)
+
+        # Register raw message handler to catch all messages
+        @self._client.on_message()
+        async def raw_message_handler(client, message: Message):
+            await command_handler(client, message)
+
         self._is_running = True
         logger.info("Starting Telegram bot in polling mode")
 
         try:
-            await self._client.run()
+            await self._client.start()
+            # Keep running until stopped
+            while self._is_running:
+                await asyncio.sleep(1)
         except Exception as e:
             logger.error(f"Telegram polling error: {e}")
             raise
@@ -156,7 +183,7 @@ class TelegramService:
             await self._client.send_message(
                 chat_id=self.chat_id,
                 text=notification.to_message(),
-                parse_mode="Markdown"
+                parse_mode=ParseMode.MARKDOWN
             )
             logger.info(f"Sent notification for email: {notification.subject}")
             return True
@@ -167,7 +194,7 @@ class TelegramService:
     async def send_message(
         self,
         text: str,
-        parse_mode: str = "Markdown"
+        parse_mode: ParseMode = ParseMode.MARKDOWN
     ) -> bool:
         """
         Send a message to the configured chat.
@@ -293,8 +320,16 @@ I monitor your Gmail inbox and summarize important emails.
             "I'll notify you when processing is complete."
         )
 
-        # In a real implementation, this would trigger the scheduler
-        # For now, just acknowledge
+        if self.job_manager:
+            success = await self.job_manager.run_now()
+            if success:
+                logger.info("Email processing triggered via /run_now")
+            else:
+                await self.send_message("Failed to trigger email processing.")
+        else:
+            logger.warning("JobManager not available for /run_now command")
+            await self.send_message("Email processing service not available.")
+
         self._last_run = "Just now"
 
     async def _handle_notes(self, message: Message) -> None:
@@ -344,3 +379,4 @@ I monitor your Gmail inbox and summarize important emails.
         if self._client:
             await self._client.stop()
             logger.info("Telegram bot stopped")
+            self._client = None

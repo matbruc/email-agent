@@ -169,24 +169,23 @@ class JobManager:
     async def run_now(self) -> bool:
         """
         Trigger immediate email processing.
+        Waits for any current processing to complete before running.
 
         Returns:
             True if processing started
         """
-        if self._is_processing:
-            logger.warning("Already processing emails")
-            return False
-
         try:
-            lock_acquired = self.lock.acquire(timeout=1)
+            # Wait for lock with a reasonable timeout (30 seconds)
+            # This allows current processing to complete, then runs immediately
+            lock_acquired = self.lock.acquire(timeout=30)
 
             if not lock_acquired:
-                logger.info("Another instance is running")
+                logger.warning("Timeout waiting for email processing lock")
                 return False
 
-            self._is_processing = True
-
             logger.info("Triggered immediate email processing via /run_now")
+
+            self._is_processing = True
 
             # Process emails
             results = await self.summarizer.process_emails()

@@ -51,17 +51,23 @@ async def main() -> None:
     storage = Storage(settings.DATABASE_PATH)
     email_service = EmailService(settings)
     llm_service = LLMService(settings)
-    telegram_service = TelegramService(settings)
 
-    # Create job manager
+    # Create job manager first (without telegram_service initially)
     job_manager = JobManager(
         email_service,
         llm_service,
-        telegram_service,
+        None,  # telegram_service will be set after initialization
         storage,
         settings
     )
 
+    # Now create telegram service with job_manager reference
+    telegram_service = TelegramService(settings, job_manager)
+
+    # Set telegram_service on job_manager for notification sending
+    job_manager.telegram_service = telegram_service
+
+  
     # Setup signal handlers
     loop = asyncio.get_event_loop()
 

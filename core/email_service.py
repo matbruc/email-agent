@@ -95,9 +95,7 @@ class EmailService:
         """Establish IMAP connection to Gmail."""
         try:
             self._client = IMAPClient(
-                "imap.gmail.com",
-                ssl=True,
-                validate_certs=True
+                "imap.gmail.com"
             )
             self._client.login(
                 self.settings.GMAIL_EMAIL,

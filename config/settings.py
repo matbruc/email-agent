@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     )
 
     # Telegram Configuration
+    TELEGRAM_API_ID: str = Field(
+        description="Telegram API ID (from https://my.telegram.org)"
+    )
+    TELEGRAM_API_HASH: str = Field(
+        description="Telegram API Hash (from https://my.telegram.org)"
+    )
     TELEGRAM_BOT_TOKEN: str = Field(
         description="Telegram bot authentication token"
     )
